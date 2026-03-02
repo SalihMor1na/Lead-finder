@@ -134,6 +134,10 @@ celerybeat.pid
 # SageMath parsed files
 *.sage.py
 
+# DuckDB databas (innehåller leads – committas ej)
+*.duckdb
+*.duckdb.wal
+
 # Environments
 .env
 .envrc
