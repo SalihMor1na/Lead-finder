@@ -10,7 +10,7 @@ class Config:
     google_cse_id: str = ""
     db_path: str = "leads.duckdb"
     search_interval_hours: int = 24
-    min_score_threshold: float = 0.6
+    min_score_threshold: float = 0.35
     rss_feed_urls: list[str] = field(default_factory=list)
 
 
@@ -34,6 +34,6 @@ def load_config() -> Config:
         google_cse_id=os.getenv("GOOGLE_CSE_ID", "").strip(),
         db_path=os.getenv("DB_PATH", "leads.duckdb"),
         search_interval_hours=int(os.getenv("SEARCH_INTERVAL_HOURS", "24")),
-        min_score_threshold=float(os.getenv("MIN_SCORE_THRESHOLD", "0.6")),
+        min_score_threshold=float(os.getenv("MIN_SCORE_THRESHOLD", "0.35")),
         rss_feed_urls=rss_feed_urls,
     )

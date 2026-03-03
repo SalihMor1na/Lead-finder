@@ -1,8 +1,9 @@
 """
 JobTech-källa: Arbetsförmedlingens publika API (JobTech Dev).
 
-Söker efter bolag som aktivt rekryterar event- och konferenskoordinatorer.
-Det är en stark signal att de arrangerar event och kan behöva talare.
+Söker efter bolag som aktivt rekryterar event- och konferenskoordinatorer
+samt roller inom HR, ledarskap och kommunikation – alla starka signaler
+att bolaget arrangerar interna event och kan behöva talare.
 
 API-dokumentation: https://jobsearch.api.jobtechdev.se/
 Helt gratis och öppet att använda - kräver ingen registrering.
@@ -16,8 +17,9 @@ from leads.sources.base import LeadSource
 
 log = logging.getLogger(__name__)
 
-# Bolag som söker dessa roller arrangerar troligen event och behöver talare
+# Roller som indikerar att bolaget arrangerar event och kan köpa talare
 SEARCH_QUERIES = [
+    # Direkta event-roller
     "eventansvarig konferens",
     "konferenskoordinator",
     "eventprojektledare",
@@ -26,6 +28,21 @@ SEARCH_QUERIES = [
     "konferensarrangör",
     "eventproducent",
     "mötes- och eventansvarig",
+    "eventkoordinator",
+    # HR och intern kommunikation – arrangerar ofta kick-offs och personalkonferenser
+    "hr-chef konferens",
+    "people and culture manager",
+    "internal communications",
+    "internkommunikation",
+    "employer branding",
+    # Ledarskaps- och kompetensutveckling – köper föreläsare
+    "ledarutveckling",
+    "kompetensutvecklingschef",
+    "learning and development",
+    # Kommunikation och PR – arrangerar presskonferenser och branschevent
+    "kommunikationschef",
+    "pr-chef",
+    "marknadskoordinator event",
 ]
 
 API_BASE = "https://jobsearch.api.jobtechdev.se/search"
@@ -35,8 +52,8 @@ COUNTRY_SWEDEN = "199"  # Landskod för Sverige i JobTech API
 class JobTechSource(LeadSource):
     """
     Söker i Arbetsförmedlingens platsbank efter bolag som anställer
-    event- och konferenspersonal – ett starkt tecken på att de arrangerar
-    event och kan vara intresserade av att boka talare.
+    event-, HR- och kommunikationspersonal – ett starkt tecken på att
+    de arrangerar event och kan vara intresserade av att boka talare.
     """
 
     def fetch_leads(self) -> list[Lead]:
@@ -59,7 +76,7 @@ class JobTechSource(LeadSource):
                 )
                 headline = job.get("headline", "")
                 raw_desc = job.get("description", {}).get("text", "") or ""
-                description = f"Söker: {headline}. {raw_desc[:400]}"
+                description = f"Söker: {headline}. {raw_desc[:500]}"
 
                 leads.append(
                     Lead(
@@ -77,7 +94,7 @@ class JobTechSource(LeadSource):
         try:
             resp = requests.get(
                 API_BASE,
-                params={"q": query, "limit": 20, "country": COUNTRY_SWEDEN},
+                params={"q": query, "limit": 50, "country": COUNTRY_SWEDEN},
                 headers={"Accept": "application/json"},
                 timeout=10,
             )

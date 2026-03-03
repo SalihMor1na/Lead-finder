@@ -1,12 +1,11 @@
 """
-RSS-källa: Publika nyhetsflöden om event och konferenser i Sverige.
+RSS-källa: Svenska nyhets- och pressflöden om event och konferenser.
 
-Använder enbart publikt tillgängliga RSS-flöden – helt lagligt.
-Mynewsdesk är Sveriges ledande PR-tjänst och deras sökning är öppen.
+Använder enbart publikt tillgängliga RSS-flöden – helt lagliga.
+Scorern filtrerar sedan ut leads med event/talare-nyckelord.
 """
 import logging
 import xml.etree.ElementTree as ET
-from urllib.parse import quote
 
 import requests
 
@@ -15,26 +14,32 @@ from leads.sources.base import LeadSource
 
 log = logging.getLogger(__name__)
 
-# Söktermer på Mynewsdesk – pressmeddelanden om event med talare
-_Q = quote  # alias för kortare rader
-
+# Fungerande svenska RSS-flöden med affärs- och eventinnehåll.
+# Scorern filtrerar bort irrelevanta poster automatiskt.
 DEFAULT_FEED_URLS: list[str] = [
-    f"https://www.mynewsdesk.com/search/pressreleases.rss?q={_Q('konferens talare')}",
-    f"https://www.mynewsdesk.com/search/pressreleases.rss?q={_Q('föreläsare event')}",
-    f"https://www.mynewsdesk.com/search/pressreleases.rss?q={_Q('keynote speaker')}&country=se",
-    f"https://www.mynewsdesk.com/search/pressreleases.rss?q={_Q('kick-off talare')}",
-    f"https://www.mynewsdesk.com/search/pressreleases.rss?q={_Q('årskonferens föreläsare')}",
+    # Wire.se – Swedish PR newswire, press releases from Swedish companies
+    "https://wire.se/feed/",
+    # Breakit – Swedish startup/tech news, lots of event announcements
+    "https://www.breakit.se/feed/rss",
+    # Resumé – Swedish marketing/PR trade press, very event-heavy
+    "https://www.resume.se/rss",
+    # Di Digital – Swedish business news
+    "https://digital.di.se/rss",
+    # Chef – Swedish leadership magazine (ledarskap = speaker market)
+    "https://www.chef.se/feed/",
+    # HR Sverige – Swedish HR news, companies with HR events buy speakers
+    "https://www.hrsverige.nu/feed/",
 ]
 
 HEADERS = {
-    "User-Agent": "Sveriges-Talare-LeadFinder/1.0",
+    "User-Agent": "Mozilla/5.0 (compatible; LeadFinder/1.0)",
 }
 
 
 class RSSFeedSource(LeadSource):
     """
-    Hämtar och tolkar publika RSS-flöden för att hitta bolag som
-    annonserar om konferenser och event med talare.
+    Hämtar och tolkar svenska RSS-flöden och letar efter bolag som
+    arrangerar konferenser och event med talare.
     """
 
     def __init__(self, feed_urls: list[str] | None = None):
@@ -61,17 +66,33 @@ class RSSFeedSource(LeadSource):
             link = (item.findtext("link") or "").strip()
             desc = (item.findtext("description") or "").strip()
 
+            # Ta bort HTML-taggar ur beskrivningen
+            import re
+            desc = re.sub(r"<[^>]+>", " ", desc).strip()
+
             if not link:
                 continue
+
+            # Tidigt filter: kasta bort poster utan event/talare-koppling
+            combined = f"{title} {desc}".lower()
+            event_words = {
+                "konferens", "event", "evenemang", "talare", "föreläsare",
+                "keynote", "speaker", "kick-off", "kickoff", "seminarium",
+                "summit", "mässa", "kongress", "symposium", "årskonferens",
+                "bolagsstämma", "personaldag", "ledarskapsdag", "fortbildning",
+                "kompetensutveckling", "ledarutveckling", "galakväll",
+            }
+            if not any(w in combined for w in event_words):
+                continue  # Irrelevant post – hoppa över
 
             leads.append(
                 Lead(
                     name=title,
                     url=link,
-                    description=desc,
+                    description=desc[:600],
                     source="rss_feed",
                 )
             )
 
-        log.info(f"RSS {feed_url[:60]}…: {len(leads)} poster hämtade")
+        log.info(f"RSS {feed_url[:60]}…: {len(leads)} relevanta poster")
         return leads
