@@ -5,7 +5,7 @@ Logiken baseras på nyckelord och signaler som indikerar att ett bolag:
   - Arrangerar konferenser, event och kick-offs
   - Söker eller bokar föreläsare/talare
   - Är en branschorganisation, eventbyrå eller HR-avdelning
-  - Aktivt rekryterar event-personal (starkt signal)
+  - Aktivt rekryterar event- eller HR-personal (stark signal)
 """
 from leads.models import Lead
 
@@ -27,9 +27,16 @@ EVENT_KEYWORDS: dict[str, float] = {
     "kickoff": 0.20,
     "årskonferens": 0.25,
     "bolagsstämma": 0.10,
-    "galakväll": 0.10,
+    "galakväll": 0.15,
     "gala": 0.10,
     "mässa": 0.10,
+    "personaldag": 0.15,
+    "bolagsdag": 0.15,
+    "ledarskapsdag": 0.20,
+    "teambuilding": 0.10,
+    "fortbildning": 0.15,
+    "årsdag": 0.10,
+    "jubileum": 0.10,
 }
 
 # Ord kopplade till talare och föreläsningar
@@ -41,11 +48,13 @@ SPEAKER_KEYWORDS: dict[str, float] = {
     "inspirationstalare": 0.35,
     "föredrag": 0.20,
     "föreläsning": 0.20,
-    "boka talare": 0.40,
-    "book speaker": 0.40,
+    "boka talare": 0.45,
+    "book speaker": 0.45,
     "moderator": 0.15,
     "paneldebatt": 0.15,
     "panelsamtal": 0.15,
+    "panelist": 0.15,
+    "föreläsningsprogram": 0.25,
 }
 
 # Ord som identifierar bolagets typ som eventrelaterat
@@ -59,9 +68,10 @@ ORGANIZER_KEYWORDS: dict[str, float] = {
     "konferensarrangör": 0.35,
     "mässarrangör": 0.25,
     "mötesbyrå": 0.25,
+    "konferenshotell": 0.20,
 }
 
-# Branscher som ofta köper talare
+# Branscher och roller som ofta köper talare
 INDUSTRY_KEYWORDS: dict[str, float] = {
     "förbund": 0.15,
     "riksförbund": 0.20,
@@ -71,24 +81,30 @@ INDUSTRY_KEYWORDS: dict[str, float] = {
     "intresseorganisation": 0.15,
     "hr": 0.10,
     "human resources": 0.10,
+    "people and culture": 0.10,
     "ledarskap": 0.15,
     "ledarutveckling": 0.20,
     "talangutveckling": 0.15,
-    "kompetensutveckling": 0.15,
+    "kompetensutveckling": 0.20,
+    "employer branding": 0.15,
+    "internkommunikation": 0.15,
     "pr-byrå": 0.15,
     "kommunikationsbyrå": 0.15,
     "marknadsföringsbyrå": 0.15,
+    "management consulting": 0.10,
+    "affärsutveckling": 0.10,
 }
 
 # ── Negativa signaler ──────────────────────────────────────────────────────────
 
-# Ord som indikerar konkurrent eller irrelevant aktör
 NEGATIVE_KEYWORDS: dict[str, float] = {
     "talarförmedling": -0.50,
     "talarbyrå": -0.50,
     "speakers bureau": -0.50,
+    "speakers' bureau": -0.50,
     "röstcoach": -0.20,
     "retorikutbildning": -0.15,
+    "talarutbildning": -0.20,
 }
 
 
@@ -109,7 +125,7 @@ class LeadScorer:
         # Talare/föreläsare
         speaker_score = sum(w for kw, w in SPEAKER_KEYWORDS.items() if kw in text)
         if speaker_score > 0:
-            total += min(speaker_score, 0.40)
+            total += min(speaker_score, 0.45)
             tags.append("talare-relaterat")
 
         # Eventbolag/-byrå
@@ -124,12 +140,13 @@ class LeadScorer:
             total += min(industry_score, 0.25)
             tags.append("relevant-bransch")
 
-        # Bonus: hämtat från JobTech = aktivt rekryterar event-personal
+        # Bonus: hämtat från JobTech = aktivt rekryterar event-/HR-personal
+        # Högt satt eftersom det är en stark köpsignal
         if lead.source == "jobtech_api":
-            total += 0.15
+            total += 0.35
             tags.append("aktiv-rekrytering")
 
-        # Negativa signaler
+        # Negativa signaler (konkurrenter och irrelevanta)
         for kw, w in NEGATIVE_KEYWORDS.items():
             if kw in text:
                 total += w  # w är negativt
