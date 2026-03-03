@@ -14,21 +14,17 @@ from leads.sources.base import LeadSource
 
 log = logging.getLogger(__name__)
 
-# Fungerande svenska RSS-flöden med affärs- och eventinnehåll.
-# Scorern filtrerar bort irrelevanta poster automatiskt.
 DEFAULT_FEED_URLS: list[str] = [
-    # Wire.se – Swedish PR newswire, press releases from Swedish companies
-    "https://wire.se/feed/",
-    # Breakit – Swedish startup/tech news, lots of event announcements
-    "https://www.breakit.se/feed/rss",
-    # Resumé – Swedish marketing/PR trade press, very event-heavy
-    "https://www.resume.se/rss",
-    # Di Digital – Swedish business news
-    "https://digital.di.se/rss",
-    # Chef – Swedish leadership magazine (ledarskap = speaker market)
-    "https://www.chef.se/feed/",
-    # HR Sverige – Swedish HR news, companies with HR events buy speakers
-    "https://www.hrsverige.nu/feed/",
+    # DI Digital – Swedish business/tech news (verifierad 200)
+    "https://www.di.se/digital/rss",
+    # Dagens PS – Swedish business/finance news (verifierad 200)
+    "https://www.dagensps.se/feed/",
+    # HR Nytt – Swedish HR news, HR-organisationer köper talare (verifierad 200)
+    "https://www.hrnytt.se/feed/",
+    # Arbetet – Swedish work/labor news, fackliga och org-event (verifierad 200)
+    "https://arbetet.se/feed/",
+    # Dagens Nyheter – bred svensk nyhetskälla, stora företagsevent (verifierad 200)
+    "https://www.dn.se/rss/",
 ]
 
 HEADERS = {

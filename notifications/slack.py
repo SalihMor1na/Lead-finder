@@ -16,19 +16,23 @@ from leads.models import Lead
 
 log = logging.getLogger(__name__)
 
-# Visuell poängindikator
 def _score_emoji(score: float) -> str:
     if score >= 0.80:
-        return "🟢"
-    if score >= 0.60:
-        return "🟡"
-    return "🔴"
+        return ":large_green_circle:"
+    if score >= 0.55:
+        return ":large_yellow_circle:"
+    return ":large_orange_circle:"
+
+
+def _valid_url(url: str) -> bool:
+    """True om URL:en är giltig för Slack-knappar (måste vara http/https)."""
+    return bool(url) and (url.startswith("http://") or url.startswith("https://"))
 
 
 SOURCE_LABELS: dict[str, str] = {
     "jobtech_api": "Arbetsförmedlingen (jobbannons)",
     "google_search": "Google-sökning",
-    "rss_feed": "Mynewsdesk / RSS",
+    "rss_feed": "RSS-nyheter",
 }
 
 
@@ -60,7 +64,7 @@ class SlackNotifier:
                                 "text": (
                                     f"Visar topp *{min(len(leads), 10)}* leads "
                                     "sorterade efter relevansscore. "
-                                    "🟢 Hög · 🟡 Medel · 🔴 Låg"
+                                    ":large_green_circle: Hög · :large_yellow_circle: Medel · :large_orange_circle: Lägre"
                                 ),
                             }
                         ],
@@ -82,35 +86,45 @@ class SlackNotifier:
         tags_text = (
             "  ".join(f"`{t}`" for t in lead.tags) if lead.tags else "_inga taggar_"
         )
-        desc = lead.description[:300] + "…" if len(lead.description) > 300 else lead.description
+        desc = lead.description[:280] + "..." if len(lead.description) > 280 else lead.description
+        desc = desc.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
-        return [
-            {
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": f"{emoji} *<{lead.url}|{lead.name}>*\n{tags_text}",
-                },
-                "accessory": {
-                    "type": "button",
-                    "text": {"type": "plain_text", "text": "Öppna länk", "emoji": True},
-                    "url": lead.url,
-                    "action_id": "open_lead",
-                },
+        has_valid_url = _valid_url(lead.url)
+        name_text = (
+            f"*<{lead.url}|{lead.name}>*" if has_valid_url else f"*{lead.name}*"
+        )
+
+        header_section: dict = {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": f"{emoji} {name_text}\n{tags_text}",
             },
+        }
+        if has_valid_url:
+            header_section["accessory"] = {
+                "type": "button",
+                "text": {"type": "plain_text", "text": "Oppna", "emoji": False},
+                "url": lead.url[:2000],
+                "action_id": f"open_{lead.url_hash}",
+            }
+
+        blocks = [
+            header_section,
             {
                 "type": "section",
                 "fields": [
                     {"type": "mrkdwn", "text": f"*Relevansscore:* {lead.score:.0%}"},
-                    {"type": "mrkdwn", "text": f"*Källa:* {source_label}"},
+                    {"type": "mrkdwn", "text": f"*Kalla:* {source_label}"},
                 ],
             },
-            {
-                "type": "section",
-                "text": {"type": "mrkdwn", "text": f"_{desc}_"},
-            },
-            {"type": "divider"},
         ]
+        if desc:
+            blocks.append(
+                {"type": "section", "text": {"type": "mrkdwn", "text": f"_{desc}_"}}
+            )
+        blocks.append({"type": "divider"})
+        return blocks
 
     def _post(self, payload: dict):
         try:
